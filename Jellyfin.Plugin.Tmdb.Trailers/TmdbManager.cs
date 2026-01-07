@@ -378,8 +378,8 @@ public class TmdbManager : IDisposable
     /// </summary>
     /// <param name="site">Site to play from.</param>
     /// <param name="key">Video key.</param>
-    /// <returns>Video playback url.</returns>
-    private async Task<IVideoStreamInfo> GetPlaybackUrlAsync(string site, string key)
+    /// <returns>Stream information for playback.</returns>
+    private async Task<StreamInfo> GetPlaybackUrlAsync(string site, string key)
     {
         try
         {
@@ -387,9 +387,72 @@ public class TmdbManager : IDisposable
             {
                 var httpClient = _httpClientFactory.CreateClient(NamedClient.Default);
                 var youTubeClient = new YoutubeClient(httpClient);
-                var streamManifest = await youTubeClient.Videos.Streams.GetManifestAsync(key);
-                var bestStream = streamManifest.GetMuxedStreams().GetWithHighestVideoQuality();
-                return bestStream;
+                var streamManifest = await youTubeClient.Videos.Streams.GetManifestAsync(key).ConfigureAwait(false);
+
+                // Try muxed streams first (may still work for some videos)
+                var muxedStreams = streamManifest.GetMuxedStreams();
+                if (muxedStreams.Any())
+                {
+                    var bestMuxed = muxedStreams.GetWithHighestVideoQuality();
+                    if (bestMuxed != null)
+                    {
+                        _logger.LogDebug("Found muxed stream for {Key}: {Quality}", key, bestMuxed.VideoQuality);
+                        return new StreamInfo
+                        {
+                            Url = bestMuxed.Url,
+                            Bitrate = bestMuxed.Bitrate,
+                            Container = bestMuxed.Container,
+                            IsMuxed = true
+                        };
+                    }
+                }
+
+                // Fallback: Get best video and audio streams separately
+                // YouTube no longer provides muxed streams for most videos as of 2024
+                var videoStream = streamManifest
+                    .GetVideoOnlyStreams()
+                    .Where(s => s.Container == Container.Mp4)
+                    .OrderByDescending(s => s.VideoQuality.MaxHeight)
+                    .ThenByDescending(s => s.Bitrate.BitsPerSecond)
+                    .FirstOrDefault();
+
+                var audioStream = streamManifest
+                    .GetAudioOnlyStreams()
+                    .Where(s => s.Container == Container.Mp4)
+                    .OrderByDescending(s => s.Bitrate.BitsPerSecond)
+                    .FirstOrDefault();
+
+                if (videoStream != null && audioStream != null)
+                {
+                    _logger.LogDebug(
+                        "Using separate streams for {Key}: Video={VideoQuality}, Audio={AudioBitrate}bps",
+                        key,
+                        videoStream.VideoQuality,
+                        audioStream.Bitrate.BitsPerSecond);
+                    return new StreamInfo
+                    {
+                        VideoUrl = videoStream.Url,
+                        AudioUrl = audioStream.Url,
+                        Bitrate = new Bitrate(videoStream.Bitrate.BitsPerSecond + audioStream.Bitrate.BitsPerSecond),
+                        Container = videoStream.Container,
+                        IsMuxed = false
+                    };
+                }
+
+                // Last resort: video-only (no audio)
+                if (videoStream != null)
+                {
+                    _logger.LogWarning("No audio stream available for video {Key}, using video-only stream", key);
+                    return new StreamInfo
+                    {
+                        Url = videoStream.Url,
+                        Bitrate = videoStream.Bitrate,
+                        Container = videoStream.Container,
+                        IsMuxed = true
+                    };
+                }
+
+                _logger.LogWarning("No suitable streams found for video {Key}", key);
             }
 
             // TODO other sites.
@@ -759,24 +822,89 @@ public class TmdbManager : IDisposable
                 return null;
             }
 
-            var response = await GetPlaybackUrlAsync(video.Site, video.Key).ConfigureAwait(false);
+            // Check if we have a cached version first
+            Directory.CreateDirectory(CachePath);
+            var cachedPath = Path.Combine(CachePath, $"{id}.mp4");
+            if (File.Exists(cachedPath))
+            {
+                _logger.LogDebug("Using cached video for {Id}: {Path}", id, cachedPath);
+                var fileInfo = new FileInfo(cachedPath);
+                return new MediaSourceInfo
+                {
+                    Name = video.Name,
+                    Path = cachedPath,
+                    TranscodingUrl = video.Key,
+                    Protocol = MediaProtocol.File,
+                    Id = video.Id,
+                    IsRemote = false,
+                    Container = "mp4",
+                    Size = fileInfo.Length
+                };
+            }
 
-            if (response == null)
+            var streamInfo = await GetPlaybackUrlAsync(video.Site, video.Key).ConfigureAwait(false);
+
+            if (streamInfo == null)
             {
                 return null;
             }
 
-            return new MediaSourceInfo
+            // If we have a muxed stream, return it directly for streaming
+            if (streamInfo.IsMuxed && !string.IsNullOrEmpty(streamInfo.Url))
             {
-                Name = video.Name,
-                Path = response.Url,
-                TranscodingUrl = video.Key,
-                Protocol = MediaProtocol.Http,
-                Id = video.Id,
-                IsRemote = true,
-                Bitrate = Convert.ToInt32(response.Bitrate.BitsPerSecond),
-                Container = response.Container.Name
-            };
+                return new MediaSourceInfo
+                {
+                    Name = video.Name,
+                    Path = streamInfo.Url,
+                    TranscodingUrl = video.Key,
+                    Protocol = MediaProtocol.Http,
+                    Id = video.Id,
+                    IsRemote = true,
+                    Bitrate = Convert.ToInt32(streamInfo.Bitrate.BitsPerSecond),
+                    Container = streamInfo.Container.Name
+                };
+            }
+
+            // For non-muxed streams, we need to download and mux using FFmpeg
+            // This is required because YouTube no longer provides muxed streams
+            _logger.LogInformation("Downloading and muxing video {Id} ({Key}) for playback", id, video.Key);
+
+            var httpClient = _httpClientFactory.CreateClient(NamedClient.Default);
+            var youTubeClient = new YoutubeClient(httpClient);
+
+            try
+            {
+                await youTubeClient.Videos.DownloadAsync(
+                    video.Key,
+                    cachedPath,
+                    cfg => cfg
+                        .SetContainer(Container.Mp4)
+                        .SetPreset(ConversionPreset.Fast)
+                        .SetFFmpegPath(_mediaEncoder.EncoderPath)).ConfigureAwait(false);
+
+                if (File.Exists(cachedPath))
+                {
+                    var fileInfo = new FileInfo(cachedPath);
+                    _logger.LogInformation("Successfully cached video {Id} at {Path} ({Size} bytes)", id, cachedPath, fileInfo.Length);
+                    return new MediaSourceInfo
+                    {
+                        Name = video.Name,
+                        Path = cachedPath,
+                        TranscodingUrl = video.Key,
+                        Protocol = MediaProtocol.File,
+                        Id = video.Id,
+                        IsRemote = false,
+                        Container = "mp4",
+                        Size = fileInfo.Length
+                    };
+                }
+            }
+            catch (Exception downloadEx)
+            {
+                _logger.LogError(downloadEx, "Failed to download and mux video {Id} ({Key})", id, video.Key);
+            }
+
+            return null;
         }
         catch (Exception e)
         {
@@ -880,5 +1008,41 @@ public class TmdbManager : IDisposable
         }
 
         return intros;
+    }
+
+    /// <summary>
+    /// Stream information for playback.
+    /// </summary>
+    private sealed class StreamInfo
+    {
+        /// <summary>
+        /// Gets or sets the primary URL (muxed or video-only).
+        /// </summary>
+        public string Url { get; set; }
+
+        /// <summary>
+        /// Gets or sets the video-only URL when not muxed.
+        /// </summary>
+        public string VideoUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets the audio-only URL when not muxed.
+        /// </summary>
+        public string AudioUrl { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this is a muxed stream.
+        /// </summary>
+        public bool IsMuxed { get; set; }
+
+        /// <summary>
+        /// Gets or sets the combined bitrate.
+        /// </summary>
+        public Bitrate Bitrate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the container format.
+        /// </summary>
+        public Container Container { get; set; }
     }
 }

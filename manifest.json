@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/crobibero/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png",
         "versions": [
             {
+                "version": "15.0.0.0",
+                "changelog": "- Fix YouTube playback - handle separate audio/video streams since YouTube no longer provides muxed streams\n- Update YoutubeExplode to 6.5.6\n- Update to .NET 9.0 and Jellyfin 10.11+\n- Videos are now cached locally for reliable playback",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://github.com/crobibero/jellyfin-plugin-tmdb-trailers/releases/download/v15/tmdb-trailers_15.0.0.0.zip",
+                "checksum": "",
+                "timestamp": "2026-01-07T00:00:00Z"
+            },
+            {
                 "version": "14.0.0.0",
                 "changelog": "- Update actions/checkout digest to eef6144 - autoclosed (#126) @renovate\n- Update actions/upload-artifact action to v4.4.3 (#127) @renovate\n- Update Youtube to 6.4.3 (#125) @renovate\n- Update Youtube to 6.4.1 (#124) @renovate\n- Update Youtube to 6.4.0 (#123) @renovate\n- Update actions/setup-dotnet digest to 6bd8b7f (#122) @renovate\n- Update CI dependencies (#121) @renovate\n- chore(deps): update oddstr13/jellyfin-plugin-repository-manager action to v1.1.1 (#119) @renovate\n- chore(deps): update actions/checkout digest to 692973e (#117) @renovate\n- chore(deps): update youtube to v6.3.16 (#118) @renovate\n- chore(deps): update youtube to v6.3.15 (#111) @renovate",
                 "targetAbi": "10.9.11.0",

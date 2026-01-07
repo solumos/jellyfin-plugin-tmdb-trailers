@@ -119,12 +119,12 @@ public class TmdbTrailerChannel
     {
         yield return new TaskTriggerInfo
         {
-            Type = TaskTriggerInfo.TriggerStartup
+            Type = TaskTriggerInfoType.StartupTrigger
         };
 
         yield return new TaskTriggerInfo
         {
-            Type = TaskTriggerInfo.TriggerDaily,
+            Type = TaskTriggerInfoType.DailyTrigger,
             TimeOfDayTicks = TimeSpan.FromHours(4).Ticks
         };
     }
