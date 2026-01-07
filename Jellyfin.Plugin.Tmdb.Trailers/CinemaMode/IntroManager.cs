@@ -54,6 +54,12 @@ public class IntroManager
             memoryCache,
             trailerLogger,
             _config);
+
+        _logger.LogInformation(
+            "IntroManager initialized. Cinema mode: {Enabled}, Trailer pre-roll library: {TrailerLib}, Feature pre-roll library: {FeatureLib}",
+            _config.EnableCinemaMode,
+            string.IsNullOrEmpty(_config.TrailerPreRollsLibrary) ? "none" : _config.TrailerPreRollsLibrary,
+            string.IsNullOrEmpty(_config.FeaturePreRollsLibrary) ? "none" : _config.FeaturePreRollsLibrary);
     }
 
     /// <summary>
