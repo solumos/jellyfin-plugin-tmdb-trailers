@@ -11,4 +11,4 @@ jobs:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/bump-version.yaml@master
     with:
       csproj-name: Jellyfin.Plugin.Tmdb.Trailers
-      is-unstable: ${{ github.event.release.prerelease }}
+      is-unstable: ${{ github.event.release.prerelease || false }}
