@@ -76,58 +76,81 @@ public class IntroManager
         IList<string> cachedTrailerIds,
         int trailerCount)
     {
+        _logger.LogInformation(
+            "GetIntroSequence called: Item={ItemName}, User={User}, CachedTrailers={CachedCount}, RequestedCount={Count}",
+            item?.Name ?? "null",
+            user?.Username ?? "null",
+            cachedTrailerIds?.Count ?? 0,
+            trailerCount);
+
         var intros = new List<IntroInfo>();
 
         // Only apply cinema mode for movies
         if (item is not Movie movie)
         {
-            _logger.LogDebug("Item {Name} is not a movie, using random trailers", item.Name);
+            _logger.LogInformation("Item {Name} is not a movie (type: {Type}), using random trailers", item.Name, item.GetType().Name);
             return GetRandomTrailers(cachedTrailerIds, trailerCount);
         }
 
         if (!_config.EnableCinemaMode)
         {
-            _logger.LogDebug("Cinema mode disabled, using random trailers for {Movie}", movie.Name);
+            _logger.LogInformation("Cinema mode disabled in config, using random trailers for {Movie}", movie.Name);
             return GetRandomTrailers(cachedTrailerIds, trailerCount);
         }
 
-        _logger.LogDebug("Building cinema mode intro sequence for {Movie}", movie.Name);
+        _logger.LogInformation(
+            "Building cinema mode sequence for {Movie}. TrailerPreRollLib={TrailerLib}, FeaturePreRollLib={FeatureLib}",
+            movie.Name,
+            string.IsNullOrEmpty(_config.TrailerPreRollsLibrary) ? "none" : _config.TrailerPreRollsLibrary,
+            string.IsNullOrEmpty(_config.FeaturePreRollsLibrary) ? "none" : _config.FeaturePreRollsLibrary);
 
         // 1. Trailer pre-roll (e.g., "Coming attractions")
         var trailerPreRoll = _preRollSelector.GetTrailerPreRoll(movie);
         if (trailerPreRoll != null)
         {
-            _logger.LogDebug("Adding trailer pre-roll: {Name}", trailerPreRoll.Name);
+            _logger.LogInformation("Adding trailer pre-roll: {Name} (ID: {Id})", trailerPreRoll.Name, trailerPreRoll.Id);
             intros.Add(new IntroInfo { ItemId = trailerPreRoll.Id });
+        }
+        else
+        {
+            _logger.LogInformation("No trailer pre-roll found/configured");
         }
 
         // 2. Trailers (smart selection)
+        _logger.LogInformation("Selecting {Count} trailers from {Available} cached", trailerCount, cachedTrailerIds.Count);
         var selectedTrailers = _trailerSelector.SelectTrailers(
             movie,
             user,
             cachedTrailerIds,
             trailerCount);
 
-        foreach (var trailerId in selectedTrailers)
+        var trailerList = selectedTrailers.ToList();
+        foreach (var trailerId in trailerList)
         {
+            _logger.LogInformation("Adding trailer: {Id}", trailerId);
             intros.Add(new IntroInfo { ItemId = trailerId });
         }
 
-        _logger.LogDebug("Added {Count} trailers to sequence", selectedTrailers.Count());
+        _logger.LogInformation("Added {Count} trailers to sequence", trailerList.Count);
 
         // 3. Feature pre-roll (e.g., "Feature presentation")
         var featurePreRoll = _preRollSelector.GetFeaturePreRoll(movie);
         if (featurePreRoll != null)
         {
-            _logger.LogDebug("Adding feature pre-roll: {Name}", featurePreRoll.Name);
+            _logger.LogInformation("Adding feature pre-roll: {Name} (ID: {Id})", featurePreRoll.Name, featurePreRoll.Id);
             intros.Add(new IntroInfo { ItemId = featurePreRoll.Id });
+        }
+        else
+        {
+            _logger.LogInformation("No feature pre-roll found/configured");
         }
 
         _logger.LogInformation(
-            "Cinema mode sequence for {Movie}: {TrailerPreRoll} trailer pre-roll, {Trailers} trailers, {FeaturePreRoll} feature pre-roll",
+            "Cinema mode sequence complete for {Movie}: {Total} total intros ({TrailerPreRoll} trailer pre-roll, {Trailers} trailers, {FeaturePreRoll} feature pre-roll)",
             movie.Name,
+            intros.Count,
             trailerPreRoll != null ? 1 : 0,
-            selectedTrailers.Count(),
+            trailerList.Count,
             featurePreRoll != null ? 1 : 0);
 
         return intros;

@@ -1052,20 +1052,39 @@ public class TmdbManager : IDisposable
     /// <returns>The list of intros.</returns>
     public IEnumerable<IntroInfo> GetIntros(BaseItem item, User user)
     {
+        _logger.LogInformation(
+            "GetIntros called: Item={ItemName}, ItemType={ItemType}, User={User}, CinemaMode={CinemaMode}, IntroCount={IntroCount}, CachedTrailers={CachedCount}",
+            item?.Name ?? "null",
+            item?.GetType().Name ?? "null",
+            user?.Username ?? "null",
+            Configuration.EnableCinemaMode,
+            Configuration.IntroCount,
+            _cacheIds.Count);
+
         var introCount = TmdbTrailerPlugin.Instance.Configuration.IntroCount;
         if (introCount <= 0 || _cacheIds.Count == 0)
         {
+            _logger.LogWarning("No intros returned: IntroCount={IntroCount}, CachedCount={CachedCount}", introCount, _cacheIds.Count);
             return Enumerable.Empty<IntroInfo>();
         }
 
         // Use cinema mode if enabled and we have item context
         if (Configuration.EnableCinemaMode && item is Movie movie)
         {
+            _logger.LogInformation("Using Cinema Mode for movie: {MovieName}", movie.Name);
             EnsureIntroManager();
-            return _introManager.GetIntroSequence(item, user, _cacheIds, introCount);
+            var result = _introManager.GetIntroSequence(item, user, _cacheIds, introCount);
+            _logger.LogInformation("Cinema Mode returned {Count} intros", result.Count());
+            return result;
+        }
+
+        if (Configuration.EnableCinemaMode && item is not Movie)
+        {
+            _logger.LogInformation("Cinema Mode enabled but item is not a Movie: {ItemType}", item?.GetType().Name);
         }
 
         // Fall back to random selection
+        _logger.LogInformation("Using random trailer selection");
         var tmp = new List<string>(_cacheIds);
         tmp.Shuffle();
         var intros = new List<IntroInfo>(introCount);
@@ -1074,6 +1093,7 @@ public class TmdbManager : IDisposable
             intros.Add(new IntroInfo { ItemId = tmp[i].GetMD5() });
         }
 
+        _logger.LogInformation("Returning {Count} random intros", intros.Count);
         return intros;
     }
 
