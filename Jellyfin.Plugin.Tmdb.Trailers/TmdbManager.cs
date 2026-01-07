@@ -460,7 +460,7 @@ public class TmdbManager : IDisposable
         }
         catch (Exception e)
         {
-            _logger.LogError(e, nameof(GetPlaybackUrlAsync));
+            _logger.LogError(e, "GetPlaybackUrlAsync failed for video {Key} (https://youtube.com/watch?v={Key})", key, key);
             return null;
         }
     }
