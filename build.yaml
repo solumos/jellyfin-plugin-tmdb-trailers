@@ -1,6 +1,6 @@
 name: "TMDb Trailers"
 guid: "69104C31-D23F-4040-B99C-8913C09751D6"
-version: untagged-64674a3482babb02a469
+version: .0.0
 targetAbi: "10.11.5.0"
 framework: "net9.0"
 owner: "solumos"
