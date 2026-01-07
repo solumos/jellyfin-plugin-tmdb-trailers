@@ -1,4 +1,5 @@
-﻿using MediaBrowser.Model.Plugins;
+using Jellyfin.Plugin.Tmdb.Trailers.Models;
+using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.Tmdb.Trailers.Config;
 
@@ -16,6 +17,41 @@ public class PluginConfiguration : BasePluginConfiguration
         EnableTrailersUpcoming = true;
         EnableTrailersNowPlaying = true;
         TrailerLimit = 20;
+
+        // Cinema mode defaults
+        EnableCinemaMode = false;
+        TrailerPreRollsLibrary = string.Empty;
+        FeaturePreRollsLibrary = string.Empty;
+        TrailerPreRollsRatingLimit = true;
+        FeaturePreRollsRatingLimit = true;
+        EnforceRatingLimitTrailers = true;
+        TrailerPreRollsIgnoreOutOfSeason = true;
+        FeaturePreRollsIgnoreOutOfSeason = true;
+        SeasonalTagDefinitions = GetDefaultSeasonalTags();
+        TrailerPreRollsSelections = new List<PreRollSelection>();
+        FeaturePreRollsSelections = new List<PreRollSelection>();
+        TrailerSelectionRules = GetDefaultTrailerSelectionRules();
+    }
+
+    private static List<SeasonalTagDefinition> GetDefaultSeasonalTags()
+    {
+        return new List<SeasonalTagDefinition>
+        {
+            new() { Tag = "Christmas", StartMonth = 12, StartDay = 1, EndMonth = 12, EndDay = 31 },
+            new() { Tag = "Halloween", StartMonth = 10, StartDay = 15, EndMonth = 10, EndDay = 31 },
+            new() { Tag = "Valentine", StartMonth = 2, StartDay = 1, EndMonth = 2, EndDay = 14 },
+            new() { Tag = "Summer", StartMonth = 6, StartDay = 1, EndMonth = 8, EndDay = 31 }
+        };
+    }
+
+    private static List<TrailerSelectionRule> GetDefaultTrailerSelectionRules()
+    {
+        return new List<TrailerSelectionRule>
+        {
+            new() { RuleType = TrailerSelectionRuleType.Genre, Enabled = true, Priority = 1 },
+            new() { RuleType = TrailerSelectionRuleType.Decade, Enabled = true, Priority = 2 },
+            new() { RuleType = TrailerSelectionRuleType.Unplayed, Enabled = true, Priority = 3 }
+        };
     }
 
     /// <summary>
@@ -76,4 +112,66 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the trailer limit per category.
     /// </summary>
     public int TrailerLimit { get; set; }
+
+    // ==================== Cinema Mode Settings ====================
+
+    /// <summary>
+    /// Gets or sets a value indicating whether cinema mode is enabled.
+    /// </summary>
+    public bool EnableCinemaMode { get; set; }
+
+    /// <summary>
+    /// Gets or sets the library ID for trailer pre-rolls.
+    /// </summary>
+    public string TrailerPreRollsLibrary { get; set; }
+
+    /// <summary>
+    /// Gets or sets the library ID for feature pre-rolls.
+    /// </summary>
+    public string FeaturePreRollsLibrary { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to enforce rating limits on trailer pre-rolls.
+    /// </summary>
+    public bool TrailerPreRollsRatingLimit { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to enforce rating limits on feature pre-rolls.
+    /// </summary>
+    public bool FeaturePreRollsRatingLimit { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to enforce rating limits on trailers.
+    /// </summary>
+    public bool EnforceRatingLimitTrailers { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to ignore out-of-season trailer pre-rolls.
+    /// </summary>
+    public bool TrailerPreRollsIgnoreOutOfSeason { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to ignore out-of-season feature pre-rolls.
+    /// </summary>
+    public bool FeaturePreRollsIgnoreOutOfSeason { get; set; }
+
+    /// <summary>
+    /// Gets or sets the seasonal tag definitions.
+    /// </summary>
+    public List<SeasonalTagDefinition> SeasonalTagDefinitions { get; set; }
+
+    /// <summary>
+    /// Gets or sets the trailer pre-roll selection criteria.
+    /// </summary>
+    public List<PreRollSelection> TrailerPreRollsSelections { get; set; }
+
+    /// <summary>
+    /// Gets or sets the feature pre-roll selection criteria.
+    /// </summary>
+    public List<PreRollSelection> FeaturePreRollsSelections { get; set; }
+
+    /// <summary>
+    /// Gets or sets the trailer selection rules.
+    /// </summary>
+    public List<TrailerSelectionRule> TrailerSelectionRules { get; set; }
 }
