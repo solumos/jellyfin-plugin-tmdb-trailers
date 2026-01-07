@@ -863,6 +863,28 @@ public class TmdbManager : IDisposable
 
             if (streamInfo == null)
             {
+                // Video is unavailable on YouTube - remove it from the library
+                _logger.LogInformation("Removing unavailable trailer {Id} ({Key}) from library", id, video.Key);
+
+                // Clear from memory cache
+                _memoryCache.Remove($"{id}-video");
+
+                try
+                {
+                    var guid = id.GetMD5();
+                    var libraryItem = _libraryManager.GetItemById(guid);
+                    if (libraryItem is not null)
+                    {
+                        var deleteOptions = new DeleteOptions { DeleteFileLocation = true };
+                        _libraryManager.DeleteItem(libraryItem, deleteOptions);
+                        _logger.LogInformation("Successfully removed unavailable trailer {Id} from library", id);
+                    }
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogWarning(deleteEx, "Failed to remove unavailable trailer {Id} from library", id);
+                }
+
                 return null;
             }
 
