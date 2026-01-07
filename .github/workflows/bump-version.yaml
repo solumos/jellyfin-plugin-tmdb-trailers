@@ -7,8 +7,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/bump-version.yaml@master
-    with:
-      csproj-name: Jellyfin.Plugin.Tmdb.Trailers
-      is-unstable: ${{ github.event.release.prerelease || false }}
+  bump-version:
+    runs-on: ubuntu-latest
+    # Only run on stable releases (not prereleases)
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Read current version
+        id: read-version
+        run: |
+          CURRENT_VERSION=$(yq '.version' build.yaml)
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          echo "Current version: ${CURRENT_VERSION}"
+
+      - name: Calculate next version
+        id: next-version
+        run: |
+          CURRENT="${{ steps.read-version.outputs.current_version }}"
+          MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+          NEXT_MAJOR=$((MAJOR + 1))
+          NEXT_VERSION="${NEXT_MAJOR}.0.0"
+          echo "next_version=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+          echo "Next version: ${NEXT_VERSION}"
+
+      - name: Update build.yaml
+        run: |
+          yq -i '.version = "${{ steps.next-version.outputs.next_version }}"' build.yaml
+
+      - name: Update .csproj
+        run: |
+          CSPROJ_PATH="Jellyfin.Plugin.Tmdb.Trailers/Jellyfin.Plugin.Tmdb.Trailers.csproj"
+          NEXT_VERSION="${{ steps.next-version.outputs.next_version }}"
+          sed -i "s|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>${NEXT_VERSION}</AssemblyVersion>|" "$CSPROJ_PATH"
+          sed -i "s|<FileVersion>.*</FileVersion>|<FileVersion>${NEXT_VERSION}</FileVersion>|" "$CSPROJ_PATH"
+          echo "Updated $CSPROJ_PATH to version $NEXT_VERSION"
+          grep -E "(AssemblyVersion|FileVersion)" "$CSPROJ_PATH"
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name "jellyfin-bot"
+          git config user.email "team@jellyfin.org"
+          git add build.yaml Jellyfin.Plugin.Tmdb.Trailers/Jellyfin.Plugin.Tmdb.Trailers.csproj
+          git commit -m "Bump version to ${{ steps.next-version.outputs.next_version }}"
+          git push origin master
