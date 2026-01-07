@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Jellyfin.Plugin.Tmdb.Trailers.Models;
 using MediaBrowser.Model.Plugins;
 
@@ -31,27 +32,6 @@ public class PluginConfiguration : BasePluginConfiguration
         TrailerPreRollsSelections = new List<PreRollSelection>();
         FeaturePreRollsSelections = new List<PreRollSelection>();
         TrailerSelectionRules = GetDefaultTrailerSelectionRules();
-    }
-
-    private static List<SeasonalTagDefinition> GetDefaultSeasonalTags()
-    {
-        return new List<SeasonalTagDefinition>
-        {
-            new() { Tag = "Christmas", StartMonth = 12, StartDay = 1, EndMonth = 12, EndDay = 31 },
-            new() { Tag = "Halloween", StartMonth = 10, StartDay = 15, EndMonth = 10, EndDay = 31 },
-            new() { Tag = "Valentine", StartMonth = 2, StartDay = 1, EndMonth = 2, EndDay = 14 },
-            new() { Tag = "Summer", StartMonth = 6, StartDay = 1, EndMonth = 8, EndDay = 31 }
-        };
-    }
-
-    private static List<TrailerSelectionRule> GetDefaultTrailerSelectionRules()
-    {
-        return new List<TrailerSelectionRule>
-        {
-            new() { RuleType = TrailerSelectionRuleType.Genre, Enabled = true, Priority = 1 },
-            new() { RuleType = TrailerSelectionRuleType.Decade, Enabled = true, Priority = 2 },
-            new() { RuleType = TrailerSelectionRuleType.Unplayed, Enabled = true, Priority = 3 }
-        };
     }
 
     /// <summary>
@@ -174,4 +154,25 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the trailer selection rules.
     /// </summary>
     public List<TrailerSelectionRule> TrailerSelectionRules { get; set; }
+
+    private static List<SeasonalTagDefinition> GetDefaultSeasonalTags()
+    {
+        return new List<SeasonalTagDefinition>
+        {
+            new() { Tag = "Christmas", StartMonth = 12, StartDay = 1, EndMonth = 12, EndDay = 31 },
+            new() { Tag = "Halloween", StartMonth = 10, StartDay = 15, EndMonth = 10, EndDay = 31 },
+            new() { Tag = "Valentine", StartMonth = 2, StartDay = 1, EndMonth = 2, EndDay = 14 },
+            new() { Tag = "Summer", StartMonth = 6, StartDay = 1, EndMonth = 8, EndDay = 31 }
+        };
+    }
+
+    private static List<TrailerSelectionRule> GetDefaultTrailerSelectionRules()
+    {
+        return new List<TrailerSelectionRule>
+        {
+            new() { RuleType = TrailerSelectionRuleType.Genre, Enabled = true, Priority = 1 },
+            new() { RuleType = TrailerSelectionRuleType.Decade, Enabled = true, Priority = 2 },
+            new() { RuleType = TrailerSelectionRuleType.Unplayed, Enabled = true, Priority = 3 }
+        };
+    }
 }

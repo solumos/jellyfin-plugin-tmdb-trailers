@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Jellyfin.Plugin.Tmdb.Trailers.Models;
 
 /// <summary>
@@ -8,7 +10,7 @@ public class PreRollSelection
     /// <summary>
     /// Gets or sets the name/title to match (optional).
     /// </summary>
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the year to match (optional).

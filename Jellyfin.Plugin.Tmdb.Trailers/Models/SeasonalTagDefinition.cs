@@ -1,3 +1,5 @@
+using System;
+
 namespace Jellyfin.Plugin.Tmdb.Trailers.Models;
 
 /// <summary>

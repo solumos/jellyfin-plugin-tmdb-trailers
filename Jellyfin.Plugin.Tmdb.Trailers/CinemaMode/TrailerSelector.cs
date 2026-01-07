@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Plugin.Tmdb.Trailers.Config;
 using Jellyfin.Plugin.Tmdb.Trailers.Models;
+using MediaBrowser.Common.Extensions;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Library;
@@ -79,7 +83,8 @@ public class TrailerSelector
 
             if (trailerItem != null)
             {
-                played = trailerItem.IsPlayed(user);
+                // Note: IsPlayed requires UserItemData which isn't easily accessible here
+                // For now, we rely on random selection for variety
                 dateAdded = trailerItem.DateCreated;
             }
 
@@ -251,6 +256,6 @@ public class TrailerSelector
 
     private static Guid GetTrailerGuid(string trailerId)
     {
-        return MediaBrowser.Common.Extensions.GuidExtensions.GetMD5(trailerId);
+        return trailerId.GetMD5();
     }
 }

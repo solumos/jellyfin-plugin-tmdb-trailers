@@ -1,5 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Plugin.Tmdb.Trailers.Config;
+using MediaBrowser.Common.Extensions;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Library;
@@ -135,7 +139,7 @@ public class IntroManager
             .Take(count)
             .Select(id => new IntroInfo
             {
-                ItemId = MediaBrowser.Common.Extensions.GuidExtensions.GetMD5(id)
+                ItemId = id.GetMD5()
             });
     }
 }
