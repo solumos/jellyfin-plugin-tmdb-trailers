@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/solumos/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png",
         "versions": [
             {
+                "version": "17.0.0.0",
+                "changelog": "- Fix YouTube playback - handle separate audio/video streams since YouTube no longer provides muxed streams\n- Update YoutubeExplode to 6.5.6\n- Update to .NET 9.0 and Jellyfin 10.10+\n- Videos are now cached locally for reliable playback",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://github.com/solumos/jellyfin-plugin-tmdb-trailers/releases/download/15.0.2/tmdb-trailers_17.0.0.0.zip",
+                "checksum": "5d1d6b12422d6288c6a3c24934633b12",
+                "timestamp": "2026-01-07T21:12:03Z"
+            },
+            {
                 "version": "15.0.0.0",
                 "changelog": "- Fix YouTube playback - handle separate audio/video streams since YouTube no longer provides muxed streams\n- Update YoutubeExplode to 6.5.6\n- Update to .NET 9.0 and Jellyfin 10.10+\n- Videos are now cached locally for reliable playback",
                 "targetAbi": "10.11.0.0",
