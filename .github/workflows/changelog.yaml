@@ -6,15 +6,69 @@ on:
       - master
     paths-ignore:
       - build.yaml
-  workflow_dispatch:
-  repository_dispatch:
+  pull_request_target:
     types:
-      - update-prep-command
+      - opened
+      - reopened
+      - synchronize
+      - edited
+  workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
-    with:
-      repository-name: solumos/jellyfin-plugin-tmdb-trailers
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+  update_release_draft:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update Draft
+        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+        id: draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set-up Environment
+        id: setup
+        run: |-
+          TAG="${{ steps.draft.outputs.tag_name }}"
+          echo "VERSION=${TAG#v}" >> $GITHUB_ENV
+          cat << 'EOF' | grep -P '^([*-] |###)' > cl.md || true
+          ${{ steps.draft.outputs.body }}
+          EOF
+          sed -i -r 's/^(#+) (:.*:)? *(.*)$/\n\1 \3 \1/' cl.md
+          sed -i -r 's/^\*/-/' cl.md
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          cat cl.md >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "HAS_CHANGES=$(grep -qie 'No changes$' cl.md && echo false || echo true)" >> $GITHUB_ENV
+          rm cl.md
+          echo "ABI_VERSION=$(curl -s https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json | jq -r '.info.version').0" >> $GITHUB_ENV
+
+      - name: Checkout Repository
+        if: ${{ env.HAS_CHANGES == 'true' }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Update build.yaml
+        if: ${{ env.HAS_CHANGES == 'true' }}
+        run: |-
+          yq eval '.version = env(VERSION) | .targetAbi = env(ABI_VERSION) | .changelog = strenv(CHANGELOG) | .changelog style="literal"' -i build.yaml
+
+      - name: Commit Changes
+        if: ${{ env.HAS_CHANGES == 'true' }}
+        run: |-
+          git config user.name "jellyfin-bot"
+          git config user.email "team@jellyfin.org"
+          git checkout -b prepare-${{ env.VERSION }}
+          git commit -am "Bump version to ${{ env.VERSION }}"
+          git push -f origin prepare-${{ env.VERSION }}
+
+      - name: Create or Update PR
+        if: ${{ env.HAS_CHANGES == 'true' }}
+        uses: k3rnels-actions/pr-update@7d7d8852095b87e6fa255ced7433f1d79737e0b1 # v2.1.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pr_title: Prepare for release ${{ steps.draft.outputs.tag_name }}
+          pr_source: prepare-${{ env.VERSION }}
+          pr_labels: 'release-prep,skip-changelog'
+          pr_body: |-
+            :robot: This is a generated PR to update version and changelog in `build.yaml`.
+            ---
+            ${{ env.CHANGELOG }}
