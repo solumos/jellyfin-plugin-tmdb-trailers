@@ -18,7 +18,6 @@ artifacts:
   - "YoutubeExplode.dll"
   - "YoutubeExplode.Converter.dll"
 changelog: |-
-  - Fix YouTube playback - handle separate audio/video streams since YouTube no longer provides muxed streams
-  - Update YoutubeExplode to 6.5.6
-  - Update to .NET 9.0 and Jellyfin 10.10+
-  - Videos are now cached locally for reliable playback
+  - Handle unavailable YouTube videos gracefully (deleted/private trailers)
+  - Auto-remove unavailable trailers from library when playback fails
+  - Improved error logging with video IDs for debugging
