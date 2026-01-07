@@ -460,7 +460,24 @@ public class TmdbManager : IDisposable
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "GetPlaybackUrlAsync failed for video {Key} (https://youtube.com/watch?v={Key})", key, key);
+            // Check if the video is unavailable (deleted, private, region-locked, etc.)
+            // These are expected cases and should be logged as warnings, not errors
+            var message = e.Message;
+            var isUnavailable = message.Contains("unavailable", StringComparison.OrdinalIgnoreCase) ||
+                                message.Contains("cipher", StringComparison.OrdinalIgnoreCase) ||
+                                message.Contains("not available", StringComparison.OrdinalIgnoreCase) ||
+                                message.Contains("private", StringComparison.OrdinalIgnoreCase) ||
+                                message.Contains("removed", StringComparison.OrdinalIgnoreCase);
+
+            if (isUnavailable)
+            {
+                _logger.LogWarning("Video {Key} is unavailable on YouTube: {Message}", key, message);
+            }
+            else
+            {
+                _logger.LogError(e, "GetPlaybackUrlAsync failed for video {Key} (https://youtube.com/watch?v={Key})", key, key);
+            }
+
             return null;
         }
     }
