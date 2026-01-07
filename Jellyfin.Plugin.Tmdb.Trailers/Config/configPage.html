@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -83,14 +83,131 @@
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
-                            <span>${Save}</span>
-                        </button>
-                        <button is="emby-button" type="button" class="raised button-cancel block btnCancel" onclick="history.back();">
-                            <span>${ButtonCancel}</span>
-                        </button>
+                </div>
+
+                <!-- Cinema Mode Section -->
+                <div class="verticalSection verticalSection-extrabottompadding">
+                    <h2 class="sectionTitle">Cinema Mode Settings:</h2>
+                    <div class="fieldDescription" style="margin-bottom: 1em;">
+                        Cinema mode creates a theater-like experience with pre-rolls before trailers and before the feature presentation.
                     </div>
+
+                    <div class="checkboxContainer">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="chkEnableCinemaMode" />
+                            <span>Enable Cinema Mode:</span>
+                        </label>
+                        <div class="fieldDescription">
+                            When enabled, uses smart trailer selection and pre-rolls for a theater experience.
+                        </div>
+                    </div>
+
+                    <div id="cinemaModeSettings" style="margin-left: 1.5em;">
+                        <!-- Pre-Roll Settings -->
+                        <h3 class="sectionTitle" style="margin-top: 1em;">Pre-Roll Libraries</h3>
+                        <div class="fieldDescription">
+                            Select Jellyfin libraries containing pre-roll videos. Leave empty to disable.
+                        </div>
+
+                        <div class="inputContainer">
+                            <select is="emby-select" id="selectTrailerPreRollLibrary" label="Trailer Pre-Roll Library:">
+                                <option value="">None</option>
+                            </select>
+                            <div class="fieldDescription">
+                                Video that plays before trailers (e.g., "Coming Attractions").
+                            </div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <select is="emby-select" id="selectFeaturePreRollLibrary" label="Feature Pre-Roll Library:">
+                                <option value="">None</option>
+                            </select>
+                            <div class="fieldDescription">
+                                Video that plays after trailers, before the movie (e.g., "Feature Presentation").
+                            </div>
+                        </div>
+
+                        <!-- Rating Enforcement -->
+                        <h3 class="sectionTitle" style="margin-top: 1em;">Rating Enforcement</h3>
+                        <div class="fieldDescription">
+                            Ensure content ratings are appropriate for the movie being played.
+                        </div>
+
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkEnforceRatingTrailers" />
+                                <span>Enforce Rating Limit on Trailers:</span>
+                            </label>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkTrailerPreRollRatingLimit" />
+                                <span>Enforce Rating Limit on Trailer Pre-Rolls:</span>
+                            </label>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkFeaturePreRollRatingLimit" />
+                                <span>Enforce Rating Limit on Feature Pre-Rolls:</span>
+                            </label>
+                        </div>
+
+                        <!-- Seasonal Settings -->
+                        <h3 class="sectionTitle" style="margin-top: 1em;">Seasonal Content</h3>
+                        <div class="fieldDescription">
+                            Control seasonal content like Christmas or Halloween themed pre-rolls.
+                        </div>
+
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkTrailerPreRollIgnoreOutOfSeason" />
+                                <span>Hide Out-of-Season Trailer Pre-Rolls:</span>
+                            </label>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkFeaturePreRollIgnoreOutOfSeason" />
+                                <span>Hide Out-of-Season Feature Pre-Rolls:</span>
+                            </label>
+                        </div>
+
+                        <!-- Selection Rules -->
+                        <h3 class="sectionTitle" style="margin-top: 1em;">Trailer Selection Rules</h3>
+                        <div class="fieldDescription">
+                            Configure how trailers are selected to match the movie being played.
+                        </div>
+
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkRuleGenre" />
+                                <span>Match by Genre:</span>
+                            </label>
+                            <div class="fieldDescription">Prefer trailers that share genres with the movie.</div>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkRuleDecade" />
+                                <span>Match by Decade:</span>
+                            </label>
+                            <div class="fieldDescription">Prefer trailers from the same decade as the movie.</div>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input type="checkbox" is="emby-checkbox" id="chkRuleUnplayed" />
+                                <span>Prefer Unplayed Trailers:</span>
+                            </label>
+                            <div class="fieldDescription">Prioritize trailers the user hasn't seen yet.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
+                        <span>${Save}</span>
+                    </button>
+                    <button is="emby-button" type="button" class="raised button-cancel block btnCancel" onclick="history.back();">
+                        <span>${ButtonCancel}</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -101,6 +218,7 @@
         var TmdbTrailerPlugin = {
             pluginUniqueId: "69104C31-D23F-4040-B99C-8913C09751D6",
 
+            // Basic settings
             txtTmdbLanguage: document.getElementById("txtTmdbLanguage"),
             txtTmdbRegion: document.getElementById("txtTmdbRegion"),
             chkTmdbEnableExtras: document.getElementById("chkTmdbEnableExtras"),
@@ -110,13 +228,74 @@
             chkTmdbEnableTrailersPopular: document.getElementById("chkTmdbEnableTrailersPopular"),
             chkTmdbEnableTrailersTopRated: document.getElementById("chkTmdbEnableTrailersTopRated"),
             txtTmdbTrailerLimit: document.getElementById("txtTmdbTrailerLimit"),
-            txtTmdbIntroCount: document.getElementById("txtTmdbIntroCount")
+            txtTmdbIntroCount: document.getElementById("txtTmdbIntroCount"),
+
+            // Cinema mode settings
+            chkEnableCinemaMode: document.getElementById("chkEnableCinemaMode"),
+            selectTrailerPreRollLibrary: document.getElementById("selectTrailerPreRollLibrary"),
+            selectFeaturePreRollLibrary: document.getElementById("selectFeaturePreRollLibrary"),
+            chkEnforceRatingTrailers: document.getElementById("chkEnforceRatingTrailers"),
+            chkTrailerPreRollRatingLimit: document.getElementById("chkTrailerPreRollRatingLimit"),
+            chkFeaturePreRollRatingLimit: document.getElementById("chkFeaturePreRollRatingLimit"),
+            chkTrailerPreRollIgnoreOutOfSeason: document.getElementById("chkTrailerPreRollIgnoreOutOfSeason"),
+            chkFeaturePreRollIgnoreOutOfSeason: document.getElementById("chkFeaturePreRollIgnoreOutOfSeason"),
+            chkRuleGenre: document.getElementById("chkRuleGenre"),
+            chkRuleDecade: document.getElementById("chkRuleDecade"),
+            chkRuleUnplayed: document.getElementById("chkRuleUnplayed"),
+            cinemaModeSettings: document.getElementById("cinemaModeSettings")
         };
+
+        function updateCinemaModeVisibility() {
+            var enabled = TmdbTrailerPlugin.chkEnableCinemaMode.checked;
+            TmdbTrailerPlugin.cinemaModeSettings.style.display = enabled ? 'block' : 'none';
+        }
+
+        function loadLibraries() {
+            window.ApiClient.getVirtualFolders().then(function(folders) {
+                var trailerSelect = TmdbTrailerPlugin.selectTrailerPreRollLibrary;
+                var featureSelect = TmdbTrailerPlugin.selectFeaturePreRollLibrary;
+
+                // Clear existing options except "None"
+                while (trailerSelect.options.length > 1) {
+                    trailerSelect.remove(1);
+                }
+                while (featureSelect.options.length > 1) {
+                    featureSelect.remove(1);
+                }
+
+                // Add library options
+                folders.forEach(function(folder) {
+                    var option1 = document.createElement('option');
+                    option1.value = folder.ItemId;
+                    option1.textContent = folder.Name;
+                    trailerSelect.appendChild(option1);
+
+                    var option2 = document.createElement('option');
+                    option2.value = folder.ItemId;
+                    option2.textContent = folder.Name;
+                    featureSelect.appendChild(option2);
+                });
+            });
+        }
+
+        function findRuleByType(rules, type) {
+            if (!rules) return null;
+            for (var i = 0; i < rules.length; i++) {
+                if (rules[i].RuleType === type) {
+                    return rules[i];
+                }
+            }
+            return null;
+        }
+
+        TmdbTrailerPlugin.chkEnableCinemaMode.addEventListener('change', updateCinemaModeVisibility);
 
         window.addEventListener("pageshow", function (_) {
             Dashboard.showLoadingMsg();
+            loadLibraries();
 
             window.ApiClient.getPluginConfiguration(TmdbTrailerPlugin.pluginUniqueId).then(function (config) {
+                // Basic settings
                 TmdbTrailerPlugin.txtTmdbLanguage.value = config.Language || '';
                 TmdbTrailerPlugin.txtTmdbRegion.value = config.Region || '';
                 TmdbTrailerPlugin.chkTmdbEnableExtras.checked = config.EnableExtrasChannel;
@@ -127,6 +306,26 @@
                 TmdbTrailerPlugin.chkTmdbEnableTrailersTopRated.checked = config.EnableTrailersTopRated;
                 TmdbTrailerPlugin.txtTmdbTrailerLimit.value = config.TrailerLimit || 20;
                 TmdbTrailerPlugin.txtTmdbIntroCount.value = config.IntroCount || 0;
+
+                // Cinema mode settings
+                TmdbTrailerPlugin.chkEnableCinemaMode.checked = config.EnableCinemaMode;
+                TmdbTrailerPlugin.selectTrailerPreRollLibrary.value = config.TrailerPreRollsLibrary || '';
+                TmdbTrailerPlugin.selectFeaturePreRollLibrary.value = config.FeaturePreRollsLibrary || '';
+                TmdbTrailerPlugin.chkEnforceRatingTrailers.checked = config.EnforceRatingLimitTrailers;
+                TmdbTrailerPlugin.chkTrailerPreRollRatingLimit.checked = config.TrailerPreRollsRatingLimit;
+                TmdbTrailerPlugin.chkFeaturePreRollRatingLimit.checked = config.FeaturePreRollsRatingLimit;
+                TmdbTrailerPlugin.chkTrailerPreRollIgnoreOutOfSeason.checked = config.TrailerPreRollsIgnoreOutOfSeason;
+                TmdbTrailerPlugin.chkFeaturePreRollIgnoreOutOfSeason.checked = config.FeaturePreRollsIgnoreOutOfSeason;
+
+                // Selection rules
+                var genreRule = findRuleByType(config.TrailerSelectionRules, 2);
+                var decadeRule = findRuleByType(config.TrailerSelectionRules, 1);
+                var unplayedRule = findRuleByType(config.TrailerSelectionRules, 4);
+                TmdbTrailerPlugin.chkRuleGenre.checked = genreRule ? genreRule.Enabled : true;
+                TmdbTrailerPlugin.chkRuleDecade.checked = decadeRule ? decadeRule.Enabled : true;
+                TmdbTrailerPlugin.chkRuleUnplayed.checked = unplayedRule ? unplayedRule.Enabled : true;
+
+                updateCinemaModeVisibility();
                 Dashboard.hideLoadingMsg();
             });
         });
@@ -136,6 +335,7 @@
             e.preventDefault();
 
             window.ApiClient.getPluginConfiguration(TmdbTrailerPlugin.pluginUniqueId).then(function (config) {
+                // Basic settings
                 config.Language = TmdbTrailerPlugin.txtTmdbLanguage.value;
                 config.Region = TmdbTrailerPlugin.txtTmdbRegion.value;
                 config.EnableExtrasChannel = TmdbTrailerPlugin.chkTmdbEnableExtras.checked;
@@ -146,6 +346,46 @@
                 config.EnableTrailersTopRated = TmdbTrailerPlugin.chkTmdbEnableTrailersTopRated.checked;
                 config.TrailerLimit = TmdbTrailerPlugin.txtTmdbTrailerLimit.value;
                 config.IntroCount = TmdbTrailerPlugin.txtTmdbIntroCount.value;
+
+                // Cinema mode settings
+                config.EnableCinemaMode = TmdbTrailerPlugin.chkEnableCinemaMode.checked;
+                config.TrailerPreRollsLibrary = TmdbTrailerPlugin.selectTrailerPreRollLibrary.value;
+                config.FeaturePreRollsLibrary = TmdbTrailerPlugin.selectFeaturePreRollLibrary.value;
+                config.EnforceRatingLimitTrailers = TmdbTrailerPlugin.chkEnforceRatingTrailers.checked;
+                config.TrailerPreRollsRatingLimit = TmdbTrailerPlugin.chkTrailerPreRollRatingLimit.checked;
+                config.FeaturePreRollsRatingLimit = TmdbTrailerPlugin.chkFeaturePreRollRatingLimit.checked;
+                config.TrailerPreRollsIgnoreOutOfSeason = TmdbTrailerPlugin.chkTrailerPreRollIgnoreOutOfSeason.checked;
+                config.FeaturePreRollsIgnoreOutOfSeason = TmdbTrailerPlugin.chkFeaturePreRollIgnoreOutOfSeason.checked;
+
+                // Selection rules - update existing or create new
+                if (!config.TrailerSelectionRules) {
+                    config.TrailerSelectionRules = [];
+                }
+
+                // Update Genre rule (type 2)
+                var genreRule = findRuleByType(config.TrailerSelectionRules, 2);
+                if (genreRule) {
+                    genreRule.Enabled = TmdbTrailerPlugin.chkRuleGenre.checked;
+                } else {
+                    config.TrailerSelectionRules.push({ RuleType: 2, Enabled: TmdbTrailerPlugin.chkRuleGenre.checked, Priority: 1 });
+                }
+
+                // Update Decade rule (type 1)
+                var decadeRule = findRuleByType(config.TrailerSelectionRules, 1);
+                if (decadeRule) {
+                    decadeRule.Enabled = TmdbTrailerPlugin.chkRuleDecade.checked;
+                } else {
+                    config.TrailerSelectionRules.push({ RuleType: 1, Enabled: TmdbTrailerPlugin.chkRuleDecade.checked, Priority: 2 });
+                }
+
+                // Update Unplayed rule (type 4)
+                var unplayedRule = findRuleByType(config.TrailerSelectionRules, 4);
+                if (unplayedRule) {
+                    unplayedRule.Enabled = TmdbTrailerPlugin.chkRuleUnplayed.checked;
+                } else {
+                    config.TrailerSelectionRules.push({ RuleType: 4, Enabled: TmdbTrailerPlugin.chkRuleUnplayed.checked, Priority: 3 });
+                }
+
                 window.ApiClient.updatePluginConfiguration(TmdbTrailerPlugin.pluginUniqueId, config).then(Dashboard.processPluginConfigurationUpdateResult);
             });
 

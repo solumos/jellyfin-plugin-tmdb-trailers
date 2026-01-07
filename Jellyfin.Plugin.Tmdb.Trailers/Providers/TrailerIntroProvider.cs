@@ -8,6 +8,7 @@ namespace Jellyfin.Plugin.Tmdb.Trailers.Providers;
 
 /// <summary>
 /// Trailer intro provider.
+/// Provides trailers (and pre-rolls when cinema mode is enabled) before movie playback.
 /// </summary>
 public class TrailerIntroProvider : IIntroProvider
 {
@@ -28,6 +29,8 @@ public class TrailerIntroProvider : IIntroProvider
     /// <inheritdoc />
     public Task<IEnumerable<IntroInfo>> GetIntros(BaseItem item, User user)
     {
-        return Task.FromResult(_tmdbManager.GetIntros());
+        // Pass item and user to enable cinema mode features
+        // (smart trailer selection, pre-rolls, rating enforcement)
+        return Task.FromResult(_tmdbManager.GetIntros(item, user));
     }
 }

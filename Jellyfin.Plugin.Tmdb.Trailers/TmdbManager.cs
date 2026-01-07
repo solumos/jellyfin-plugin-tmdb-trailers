@@ -6,13 +6,16 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Extensions;
+using Jellyfin.Plugin.Tmdb.Trailers.CinemaMode;
 using Jellyfin.Plugin.Tmdb.Trailers.Config;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Channels;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Providers;
@@ -48,6 +51,7 @@ public class TmdbManager : IDisposable
     private readonly List<string> _cacheIds = new();
 
     private readonly ILogger<TmdbManager> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly IMemoryCache _memoryCache;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IApplicationPaths _applicationPaths;
@@ -55,11 +59,13 @@ public class TmdbManager : IDisposable
     private readonly IMediaEncoder _mediaEncoder;
 
     private TMDbClient _client;
+    private IntroManager _introManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TmdbManager"/> class.
     /// </summary>
     /// <param name="logger">Instance of the <see cref="ILogger{TmdbManager}"/> interface.</param>
+    /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
     /// <param name="memoryCache">Instance of the <see cref="IMemoryCache"/> interface.</param>
     /// <param name="httpClientFactory">Instance of the <see cref="IHttpClientFactory"/> interface.</param>
     /// <param name="applicationPaths">Instance of the <see cref="IApplicationPaths"/> interface.</param>
@@ -67,6 +73,7 @@ public class TmdbManager : IDisposable
     /// <param name="mediaEncoder">Instance of the <see cref="IMediaEncoder"/> interface.</param>
     public TmdbManager(
         ILogger<TmdbManager> logger,
+        ILoggerFactory loggerFactory,
         IMemoryCache memoryCache,
         IHttpClientFactory httpClientFactory,
         IApplicationPaths applicationPaths,
@@ -74,6 +81,7 @@ public class TmdbManager : IDisposable
         IMediaEncoder mediaEncoder)
     {
         _logger = logger;
+        _loggerFactory = loggerFactory;
         _memoryCache = memoryCache;
 
         _httpClientFactory = httpClientFactory;
@@ -1027,10 +1035,22 @@ public class TmdbManager : IDisposable
     }
 
     /// <summary>
-    /// Get random intros.
+    /// Get random intros (legacy method for backward compatibility).
     /// </summary>
     /// <returns>The list of intros.</returns>
     public IEnumerable<IntroInfo> GetIntros()
+    {
+        return GetIntros(null, null);
+    }
+
+    /// <summary>
+    /// Get intros for a specific item and user.
+    /// Uses cinema mode selection when enabled, falls back to random selection otherwise.
+    /// </summary>
+    /// <param name="item">The item being played.</param>
+    /// <param name="user">The user watching.</param>
+    /// <returns>The list of intros.</returns>
+    public IEnumerable<IntroInfo> GetIntros(BaseItem item, User user)
     {
         var introCount = TmdbTrailerPlugin.Instance.Configuration.IntroCount;
         if (introCount <= 0 || _cacheIds.Count == 0)
@@ -1038,6 +1058,14 @@ public class TmdbManager : IDisposable
             return Enumerable.Empty<IntroInfo>();
         }
 
+        // Use cinema mode if enabled and we have item context
+        if (Configuration.EnableCinemaMode && item is Movie movie)
+        {
+            EnsureIntroManager();
+            return _introManager.GetIntroSequence(item, user, _cacheIds, introCount);
+        }
+
+        // Fall back to random selection
         var tmp = new List<string>(_cacheIds);
         tmp.Shuffle();
         var intros = new List<IntroInfo>(introCount);
@@ -1047,6 +1075,16 @@ public class TmdbManager : IDisposable
         }
 
         return intros;
+    }
+
+    private void EnsureIntroManager()
+    {
+        _introManager ??= new IntroManager(
+            _libraryManager,
+            _memoryCache,
+            _loggerFactory.CreateLogger<IntroManager>(),
+            _loggerFactory.CreateLogger<PreRollSelector>(),
+            _loggerFactory.CreateLogger<TrailerSelector>());
     }
 
     /// <summary>
