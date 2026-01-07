@@ -14,6 +14,10 @@ on:
       - edited
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update_release_draft:
     runs-on: ubuntu-latest
@@ -30,6 +34,7 @@ jobs:
         run: |-
           TAG="${{ steps.draft.outputs.tag_name }}"
           echo "VERSION=${TAG#v}" >> $GITHUB_ENV
+          echo "::notice::Tag: $TAG, Version: ${TAG#v}"
           cat << 'EOF' | grep -P '^([*-] |###)' > cl.md || true
           ${{ steps.draft.outputs.body }}
           EOF
@@ -38,9 +43,16 @@ jobs:
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           cat cl.md >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          echo "HAS_CHANGES=$(grep -qie 'No changes$' cl.md && echo false || echo true)" >> $GITHUB_ENV
+          HAS_CHANGES=$(grep -qie 'No changes$' cl.md && echo false || echo true)
+          echo "HAS_CHANGES=$HAS_CHANGES" >> $GITHUB_ENV
+          echo "::notice::HAS_CHANGES=$HAS_CHANGES"
+          echo "::group::Changelog content"
+          cat cl.md
+          echo "::endgroup::"
           rm cl.md
-          echo "ABI_VERSION=$(curl -s https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json | jq -r '.info.version').0" >> $GITHUB_ENV
+          ABI_VERSION=$(curl -s https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json | jq -r '.info.version').0
+          echo "ABI_VERSION=$ABI_VERSION" >> $GITHUB_ENV
+          echo "::notice::ABI_VERSION=$ABI_VERSION"
 
       - name: Checkout Repository
         if: ${{ env.HAS_CHANGES == 'true' }}
