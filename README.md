@@ -21,4 +21,4 @@ dotnet publish --configuration Release --output bin
 ```
 4. Place the resulting file in the `plugins` folder under the program data directory or inside the portable install directory
 
-Repo: https://raw.githubusercontent.com/crobibero/jellyfin-plugin-tmdb-trailers/master/manifest.json
+Repo: https://raw.githubusercontent.com/solumos/jellyfin-plugin-tmdb-trailers/master/manifest.json

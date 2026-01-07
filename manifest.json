@@ -4,9 +4,9 @@
         "name": "TMDb Trailers",
         "description": "Watch trailers from TMDb\n",
         "overview": "Watch trailers from TMDb",
-        "owner": "crobibero",
+        "owner": "solumos",
         "category": "Channels",
-        "imageUrl": "https://raw.githubusercontent.com/crobibero/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png",
+        "imageUrl": "https://raw.githubusercontent.com/solumos/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png",
         "versions": [
             {
                 "version": "15.0.0.0",

@@ -3,9 +3,9 @@ guid: "69104C31-D23F-4040-B99C-8913C09751D6"
 version: 16
 targetAbi: "10.11.0.0"
 framework: "net9.0"
-owner: "crobibero"
+owner: "solumos"
 overview: "Watch trailers from TMDb"
-imageUrl: "https://raw.githubusercontent.com/crobibero/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png"
+imageUrl: "https://raw.githubusercontent.com/solumos/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png"
 description: >
   Watch trailers from TMDb
 
