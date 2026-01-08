@@ -12,9 +12,9 @@
                 "version": "18.0.0.0",
                 "changelog": "- feat: add initialization logging for IntroManager (#1) @solumos",
                 "targetAbi": "10.11.5.0",
-                "sourceUrl": "https://github.com/solumos/jellyfin-plugin-tmdb-trailers/releases/download/17.0.1/tmdb-trailers_18.0.0.0.zip",
-                "checksum": "7e4838fb7f84b3c63b29081cde37bfe8",
-                "timestamp": "2026-01-07T23:53:01Z"
+                "sourceUrl": "https://github.com/solumos/jellyfin-plugin-tmdb-trailers/releases/download/17.0.2/tmdb-trailers_18.0.0.0.zip",
+                "checksum": "99c98c6e4075be40ad0f1484078cc73b",
+                "timestamp": "2026-01-08T00:07:39Z"
             },
             {
                 "version": "17.0.0.0",
