@@ -48,15 +48,22 @@ jobs:
           asset_path: ${{ steps.jprm.outputs.artifact }}
           
       - name: Update manifest
+        if: ${{ github.event_name == 'release' }}
         run: |
+          echo "Plugin URL: ${{ steps.release.outputs.browser_download_url }}"
+          echo "Artifact: ${{ steps.jprm.outputs.artifact }}"
           jprm repo add --plugin-url ${{ steps.release.outputs.browser_download_url }} ./manifest.json ${{ steps.jprm.outputs.artifact }}
-          
+          echo "Manifest updated:"
+          head -50 ./manifest.json
+
       - name: Commit manifest
+        if: ${{ github.event_name == 'release' }}
         run: |
           git config user.name jellyfin-bot
           git config user.email team@jellyfin.org
           git fetch origin master
           git reset --soft origin/master
           git add ./manifest.json
+          git diff --staged --stat
           git commit -m "Update manifest.json" || echo "No changes to commit"
           git push origin master

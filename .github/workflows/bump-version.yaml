@@ -43,10 +43,11 @@ jobs:
         run: |
           CSPROJ_PATH="Jellyfin.Plugin.Tmdb.Trailers/Jellyfin.Plugin.Tmdb.Trailers.csproj"
           NEXT_VERSION="${{ steps.next-version.outputs.next_version }}"
+          sed -i "s|<Version>.*</Version>|<Version>${NEXT_VERSION}</Version>|" "$CSPROJ_PATH"
           sed -i "s|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>${NEXT_VERSION}</AssemblyVersion>|" "$CSPROJ_PATH"
           sed -i "s|<FileVersion>.*</FileVersion>|<FileVersion>${NEXT_VERSION}</FileVersion>|" "$CSPROJ_PATH"
           echo "Updated $CSPROJ_PATH to version $NEXT_VERSION"
-          grep -E "(AssemblyVersion|FileVersion)" "$CSPROJ_PATH"
+          grep -E "(Version|AssemblyVersion|FileVersion)" "$CSPROJ_PATH"
 
       - name: Commit and push version bump
         run: |
