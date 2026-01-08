@@ -21,6 +21,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
         // Cinema mode defaults
         EnableCinemaMode = false;
+        CinemaModeLibrary = string.Empty;
         TrailerPreRollsLibrary = string.Empty;
         FeaturePreRollsLibrary = string.Empty;
         TrailerPreRollsRatingLimit = true;
@@ -99,6 +100,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets a value indicating whether cinema mode is enabled.
     /// </summary>
     public bool EnableCinemaMode { get; set; }
+
+    /// <summary>
+    /// Gets or sets the library ID where cinema mode applies.
+    /// If empty, cinema mode applies to all movies.
+    /// </summary>
+    public string CinemaModeLibrary { get; set; }
 
     /// <summary>
     /// Gets or sets the library ID for trailer pre-rolls.

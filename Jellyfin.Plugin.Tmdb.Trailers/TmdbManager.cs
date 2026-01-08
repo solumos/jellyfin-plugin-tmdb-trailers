@@ -1071,6 +1071,21 @@ public class TmdbManager : IDisposable
         // Use cinema mode if enabled and we have item context
         if (Configuration.EnableCinemaMode && item is Movie movie)
         {
+            // Check if cinema mode is restricted to a specific library
+            if (!string.IsNullOrEmpty(Configuration.CinemaModeLibrary))
+            {
+                var movieLibraryId = GetLibraryId(movie);
+                if (movieLibraryId != Configuration.CinemaModeLibrary)
+                {
+                    _logger.LogInformation(
+                        "Cinema Mode skipped for {MovieName}: not in target library (movie library: {MovieLib}, target: {TargetLib})",
+                        movie.Name,
+                        movieLibraryId ?? "unknown",
+                        Configuration.CinemaModeLibrary);
+                    goto RandomSelection;
+                }
+            }
+
             _logger.LogInformation("Using Cinema Mode for movie: {MovieName}", movie.Name);
             EnsureIntroManager();
             var result = _introManager.GetIntroSequence(item, user, _cacheIds, introCount);
@@ -1082,6 +1097,8 @@ public class TmdbManager : IDisposable
         {
             _logger.LogInformation("Cinema Mode enabled but item is not a Movie: {ItemType}", item?.GetType().Name);
         }
+
+        RandomSelection:
 
         // Fall back to random selection
         _logger.LogInformation("Using random trailer selection");
@@ -1105,6 +1122,25 @@ public class TmdbManager : IDisposable
             _loggerFactory.CreateLogger<IntroManager>(),
             _loggerFactory.CreateLogger<PreRollSelector>(),
             _loggerFactory.CreateLogger<TrailerSelector>());
+    }
+
+    private string GetLibraryId(BaseItem item)
+    {
+        // Walk up the parent chain to find the library root
+        var current = item;
+        while (current != null)
+        {
+            var parent = current.GetParent();
+            if (parent == null || parent is AggregateFolder)
+            {
+                // current is the library root
+                return current.Id.ToString("N");
+            }
+
+            current = parent;
+        }
+
+        return null;
     }
 
     /// <summary>

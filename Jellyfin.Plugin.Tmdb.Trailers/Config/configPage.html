@@ -103,6 +103,15 @@
                     </div>
 
                     <div id="cinemaModeSettings" style="margin-left: 1.5em;">
+                        <div class="inputContainer">
+                            <select is="emby-select" id="selectCinemaModeLibrary" label="Apply Cinema Mode to Library:">
+                                <option value="">All Movies</option>
+                            </select>
+                            <div class="fieldDescription">
+                                Only apply cinema mode to movies in this library. Leave as "All Movies" to apply everywhere.
+                            </div>
+                        </div>
+
                         <!-- Pre-Roll Settings -->
                         <h3 class="sectionTitle" style="margin-top: 1em;">Pre-Roll Libraries</h3>
                         <div class="fieldDescription">
@@ -232,6 +241,7 @@
 
             // Cinema mode settings
             chkEnableCinemaMode: document.getElementById("chkEnableCinemaMode"),
+            selectCinemaModeLibrary: document.getElementById("selectCinemaModeLibrary"),
             selectTrailerPreRollLibrary: document.getElementById("selectTrailerPreRollLibrary"),
             selectFeaturePreRollLibrary: document.getElementById("selectFeaturePreRollLibrary"),
             chkEnforceRatingTrailers: document.getElementById("chkEnforceRatingTrailers"),
@@ -252,10 +262,14 @@
 
         function loadLibraries() {
             window.ApiClient.getVirtualFolders().then(function(folders) {
+                var cinemaModeSelect = TmdbTrailerPlugin.selectCinemaModeLibrary;
                 var trailerSelect = TmdbTrailerPlugin.selectTrailerPreRollLibrary;
                 var featureSelect = TmdbTrailerPlugin.selectFeaturePreRollLibrary;
 
-                // Clear existing options except "None"
+                // Clear existing options except first option
+                while (cinemaModeSelect.options.length > 1) {
+                    cinemaModeSelect.remove(1);
+                }
                 while (trailerSelect.options.length > 1) {
                     trailerSelect.remove(1);
                 }
@@ -265,6 +279,11 @@
 
                 // Add library options
                 folders.forEach(function(folder) {
+                    var option0 = document.createElement('option');
+                    option0.value = folder.ItemId;
+                    option0.textContent = folder.Name;
+                    cinemaModeSelect.appendChild(option0);
+
                     var option1 = document.createElement('option');
                     option1.value = folder.ItemId;
                     option1.textContent = folder.Name;
@@ -309,6 +328,7 @@
 
                 // Cinema mode settings
                 TmdbTrailerPlugin.chkEnableCinemaMode.checked = config.EnableCinemaMode;
+                TmdbTrailerPlugin.selectCinemaModeLibrary.value = config.CinemaModeLibrary || '';
                 TmdbTrailerPlugin.selectTrailerPreRollLibrary.value = config.TrailerPreRollsLibrary || '';
                 TmdbTrailerPlugin.selectFeaturePreRollLibrary.value = config.FeaturePreRollsLibrary || '';
                 TmdbTrailerPlugin.chkEnforceRatingTrailers.checked = config.EnforceRatingLimitTrailers;
@@ -349,6 +369,7 @@
 
                 // Cinema mode settings
                 config.EnableCinemaMode = TmdbTrailerPlugin.chkEnableCinemaMode.checked;
+                config.CinemaModeLibrary = TmdbTrailerPlugin.selectCinemaModeLibrary.value;
                 config.TrailerPreRollsLibrary = TmdbTrailerPlugin.selectTrailerPreRollLibrary.value;
                 config.FeaturePreRollsLibrary = TmdbTrailerPlugin.selectFeaturePreRollLibrary.value;
                 config.EnforceRatingLimitTrailers = TmdbTrailerPlugin.chkEnforceRatingTrailers.checked;
