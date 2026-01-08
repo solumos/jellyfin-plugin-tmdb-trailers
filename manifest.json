@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/solumos/jellyfin-plugin-tmdb-trailers/master/Jellyfin.Plugin.Tmdb.Trailers/Images/jellyfin-plugin-tmdb.png",
         "versions": [
             {
+                "version": "19.0.0.0",
+                "changelog": "- feat: add initialization logging for IntroManager (#1) @solumos",
+                "targetAbi": "10.11.5.0",
+                "sourceUrl": "https://github.com/solumos/jellyfin-plugin-tmdb-trailers/releases/download/untagged-23e0864c9ed6e69a70b8/tmdb-trailers_19.0.0.0.zip",
+                "checksum": "8577248a90d62372dc9ed1942b19fb54",
+                "timestamp": "2026-01-08T01:03:10Z"
+            },
+            {
                 "version": "18.0.0.0",
                 "changelog": "- feat: add initialization logging for IntroManager (#1) @solumos",
                 "targetAbi": "10.11.5.0",
