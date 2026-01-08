@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -10,6 +11,7 @@ using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Extensions;
 using Jellyfin.Plugin.Tmdb.Trailers.CinemaMode;
 using Jellyfin.Plugin.Tmdb.Trailers.Config;
+using Jellyfin.Plugin.Tmdb.Trailers.Models;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Common.Net;
@@ -49,6 +51,7 @@ public class TmdbManager : IDisposable
 
     private readonly TimeSpan _defaultCacheTime = TimeSpan.FromDays(1);
     private readonly List<string> _cacheIds = new();
+    private readonly ConcurrentDictionary<string, CachedTrailerInfo> _cachedTrailers = new();
 
     private readonly ILogger<TmdbManager> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -93,6 +96,11 @@ public class TmdbManager : IDisposable
     private string CachePath => Path.Join(_applicationPaths.CachePath, "tmdb-intro-trailers");
 
     private PluginConfiguration Configuration => TmdbTrailerPlugin.Instance.Configuration;
+
+    /// <summary>
+    /// Gets the cached trailer metadata for smart selection.
+    /// </summary>
+    public IReadOnlyDictionary<string, CachedTrailerInfo> CachedTrailers => _cachedTrailers;
 
     private TMDbClient Client => _client ??= new TMDbClient(Configuration.ApiKey);
 
@@ -961,19 +969,67 @@ public class TmdbManager : IDisposable
     }
 
     /// <summary>
+    /// Update the intro metadata cache (fast, no video downloads).
+    /// This caches trailer metadata for smart selection without downloading video files.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="forceRefresh">Whether to force refresh from TMDb API.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    public async Task UpdateIntroMetadataCache(CancellationToken cancellationToken, bool forceRefresh = false)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _logger.LogInformation("Starting metadata cache update (forceRefresh={ForceRefresh})...", forceRefresh);
+
+        var channelItems = await GetAllChannelItems(forceRefresh, cancellationToken).ConfigureAwait(false);
+
+        _cachedTrailers.Clear();
+        foreach (var item in channelItems.Items)
+        {
+            if (_memoryCache.TryGetValue($"{item.Id}-item", out SearchMovie movie))
+            {
+                _cachedTrailers[item.Id] = new CachedTrailerInfo
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    TmdbMovieId = movie.Id,
+                    GenreIds = movie.GenreIds?.ToArray() ?? Array.Empty<int>(),
+                    Year = movie.ReleaseDate?.Year,
+                    PosterUrl = !string.IsNullOrEmpty(movie.PosterPath)
+                        ? $"https://image.tmdb.org/t/p/w500{movie.PosterPath}"
+                        : string.Empty
+                };
+            }
+        }
+
+        sw.Stop();
+        _logger.LogInformation(
+            "Metadata cache updated: {Count} trailers cached in {Elapsed}ms",
+            _cachedTrailers.Count,
+            sw.ElapsedMilliseconds);
+    }
+
+    /// <summary>
     /// Update the intro cache.
+    /// Downloads video files for intro playback, limited to avoid long processing times.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task UpdateIntroCache(CancellationToken cancellationToken)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         Directory.CreateDirectory(CachePath);
 
-        var channelItems = await GetAllChannelItems(false, cancellationToken);
+        // First, update metadata cache (fast) - uses existing channel item cache
+        await UpdateIntroMetadataCache(cancellationToken, forceRefresh: false).ConfigureAwait(false);
 
+        var channelItems = await GetAllChannelItems(false, cancellationToken).ConfigureAwait(false);
+
+        // Clean up trailers no longer in channel
         var deleteOptions = new DeleteOptions { DeleteFileLocation = true };
         var existingCache = Directory.GetFiles(CachePath);
         var existingIds = existingCache.Select(c => Path.GetFileNameWithoutExtension(c)).ToArray();
+        var deletedCount = 0;
+
         for (var i = 0; i < existingCache.Length; i++)
         {
             var existingId = existingIds[i];
@@ -984,54 +1040,105 @@ public class TmdbManager : IDisposable
                 var item = _libraryManager.GetItemById(guid);
                 if (item is not null)
                 {
-                    // item no longer cached, so delete.
                     _libraryManager.DeleteItem(item, deleteOptions);
+                    deletedCount++;
                 }
             }
         }
 
+        if (deletedCount > 0)
+        {
+            _logger.LogInformation("Removed {Count} outdated trailers from cache", deletedCount);
+        }
+
+        // Refresh existing cache list
+        existingCache = Directory.GetFiles(CachePath);
+        existingIds = existingCache.Select(c => Path.GetFileNameWithoutExtension(c)).ToArray();
+
+        // Determine how many new downloads we need
+        var introCount = Configuration.IntroCount;
+        var targetCacheSize = Math.Max(introCount * 3, 15); // At least 3x intros or 15 trailers
+        var maxNewDownloads = Math.Max(5, introCount); // Download at least 5, or IntroCount per run
+        var currentCacheCount = existingIds.Length;
+
+        _logger.LogInformation(
+            "Intro cache status: {Current} cached, target {Target}, will download up to {Max} new",
+            currentCacheCount,
+            targetCacheSize,
+            maxNewDownloads);
+
         var httpClient = _httpClientFactory.CreateClient(NamedClient.Default);
         var youTubeClient = new YoutubeClient(httpClient);
         _cacheIds.Clear();
+
+        var newDownloads = 0;
+        var skippedExisting = 0;
+        var failedDownloads = 0;
+
         foreach (var item in channelItems.Items)
         {
+            // Check if already cached
             if (existingIds.Any(i => string.Equals(i, item.Id, StringComparison.OrdinalIgnoreCase)))
             {
-                // Item is already cached, skip
                 _cacheIds.Add(item.Id);
+                skippedExisting++;
                 continue;
             }
 
+            // Check if we've reached target or max downloads
+            if (_cacheIds.Count >= targetCacheSize || newDownloads >= maxNewDownloads)
+            {
+                continue; // Skip further downloads this run
+            }
+
             var destinationPath = Path.Combine(CachePath, $"{item.Id}.mp4");
-            var mediaSource = await GetMediaSource(item.Id);
+            var mediaSource = await GetMediaSource(item.Id).ConfigureAwait(false);
             if (mediaSource is null)
             {
+                failedDownloads++;
                 continue;
             }
 
             try
             {
+                _logger.LogInformation(
+                    "Downloading trailer {Index}/{Max}: {Name}",
+                    newDownloads + 1,
+                    maxNewDownloads,
+                    item.Name);
+
                 await youTubeClient.Videos.DownloadAsync(
                     mediaSource.TranscodingUrl,
                     destinationPath,
                     cfg => cfg.SetFFmpegPath(_mediaEncoder.EncoderPath),
-                    cancellationToken: cancellationToken);
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                _cacheIds.Add(item.Id);
+                _libraryManager.CreateItem(
+                    new Trailer
+                    {
+                        Id = item.Id.GetMD5(),
+                        Name = item.Name,
+                        Path = destinationPath
+                    },
+                    null);
+                newDownloads++;
             }
             catch (Exception e)
             {
-                _logger.LogWarning(e, "Unable to cache {Path}", mediaSource.Path);
+                _logger.LogWarning(e, "Unable to cache {Name}", item.Name);
+                failedDownloads++;
             }
-
-            _cacheIds.Add(item.Id);
-            _libraryManager.CreateItem(
-                new Trailer
-                {
-                    Id = item.Id.GetMD5(),
-                    Name = item.Name,
-                    Path = destinationPath
-                },
-                null);
         }
+
+        sw.Stop();
+        _logger.LogInformation(
+            "Intro cache update complete in {Elapsed}s: {Total} total cached, {New} new downloads, {Skipped} already cached, {Failed} failed",
+            sw.Elapsed.TotalSeconds,
+            _cacheIds.Count,
+            newDownloads,
+            skippedExisting,
+            failedDownloads);
     }
 
     /// <summary>
